@@ -1,0 +1,5 @@
+[INFO] 2025-01-10 User logged in
+[WARNING] Invalid password attempt
+[ERROR] 2025-02-31 Invalid leap date connection error
+[TRACE] 2025-01-10 Unknown severity level
+[ERROR] 2025-01-15 Timeout waiting for server response

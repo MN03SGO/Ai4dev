@@ -1,0 +1,4 @@
+[INFO] 2025-01-10 User logged in successfully
+[ERROR] 2025-01-10 Failed to connect to database
+[WARNING] 2025-01-11 Disk space reaching 85% capacity
+[INFO] 2025-01-12 Scheduled backup completed
