@@ -53,3 +53,93 @@ las líneas mal formateadas. Si el archivo no existe, se informa el error.
   mal formateadas y no incrementan el contador de severidad.
 - Las líneas sin severidad reconocida también se cuentan como mal formateadas.
 - Las líneas vacías se ignoran y no incrementan el total.
+
+## 2. Ejemplo concreto: corrección de una sugerencia incompleta de la IA
+
+### Sugerencia inicial
+
+Al solicitar una forma rápida de separar los componentes de cada línea, una
+propuesta inicial fue usar manipulación básica de cadenas con `.split()`:
+
+```python
+partes = linea.split(" ")
+severidad = partes[0].replace("[", "").replace("]", "")
+fecha = partes[1]
+mensaje = " ".join(partes[2:])
+```
+
+### Detección del fallo y corrección
+
+Este enfoque supone que todas las líneas tienen una fecha en la posición
+`partes[1]`. En una línea como `[WARNING] Invalid password attempt`, ese
+elemento sería `"Invalid"`, no una fecha. Además, el resultado depende de que
+los componentes estén separados por exactamente un espacio. Si se intenta
+validar ese valor como fecha, puede causar una excepción si no se maneja o una
+clasificación incorrecta.
+
+Se sustituyó esa división posicional por la expresión regular `LOG_PATTERN`,
+que captura la severidad, una fecha opcional y el mensaje mediante grupos con
+nombre. La fecha opcional permite reconocer el registro y luego clasificarlo
+como mal formateado cuando `es_fecha_valida()` recibe un valor vacío. Las fechas
+presentes se validan con `datetime.strptime`.
+
+## 3. Evidencia y análisis de resultados de pruebas
+
+### Prueba 1: archivo bien formado (`logs_validos.txt`)
+
+- **Entrada:** 4 registros con severidades `INFO`, `WARNING` y `ERROR`, y fechas
+  válidas en formato `YYYY-MM-DD`.
+- **Resultado esperado:** 4 eventos procesados y 0 líneas mal formateadas.
+- **Resultado obtenido:**
+
+```text
+=============================================
+  RESUMEN DE ANÁLISIS DE LOGS: logs_validos.txt
+=============================================
+ Total de eventos procesados : 4
+  - Eventos INFO             : 2
+  - Eventos WARNING          : 1
+  - Eventos ERROR            : 1
+  - Líneas mal formateadas   : 0
+=============================================
+```
+
+### Prueba 2: archivo inconsistente (`logs_incosistentes.txt`)
+
+- **Entrada:** 5 registros con distintos casos borde:
+  1. `[INFO] 2025-01-10 User logged in` (válido).
+  2. `[WARNING] Invalid password attempt` (sin fecha).
+  3. `[ERROR] 2025-02-31 Invalid leap date connection error` (fecha inexistente).
+  4. `[TRACE] 2025-01-10 Unknown severity level` (severidad no permitida).
+  5. `[ERROR] 2025-01-15 Timeout waiting for server response` (válido).
+- **Resultado esperado:** 5 eventos procesados, 1 `INFO`, 0 `WARNING`, 1
+  `ERROR` y 3 líneas mal formateadas.
+- **Resultado obtenido:**
+
+```text
+=============================================
+  RESUMEN DE ANÁLISIS DE LOGS: logs_incosistentes.txt
+=============================================
+ Total de eventos procesados : 5
+  - Eventos INFO             : 1
+  - Eventos WARNING          : 0
+  - Eventos ERROR            : 1
+  - Líneas mal formateadas   : 3
+=============================================
+```
+
+## 4. Aprendizaje sobre el uso de la IA como herramienta de apoyo
+
+El desarrollo de este analizador mostró que las herramientas de IA pueden
+acelerar la generación de sintaxis repetitiva y proponer estructuras iniciales,
+como expresiones regulares. Sin embargo, esas propuestas deben contrastarse con
+las reglas del problema y probarse con casos borde.
+
+El criterio técnico del desarrollador sigue siendo indispensable para:
+
+1. **Establecer los límites de validación:** definir qué datos se consideran
+   válidos según los requisitos.
+2. **Auditar el código generado:** probarlo con entradas mal formateadas y
+   detectar supuestos que no cubren todos los casos.
+3. **Garantizar la solidez del sistema:** revisar y adaptar las sugerencias para
+   que el comportamiento final sea consistente con los requisitos.
